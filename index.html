@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Die Schattenreise</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #eee;
+      font-family: 'Georgia', serif;
+      margin: 0;
+      padding: 0;
+      background-image: url('background.jpg'); /* Ersetze mit deinem Bild */
+      background-size: cover;
+      background-position: center;
+    }
+    #game-container {
+      max-width: 800px;
+      margin: auto;
+      padding: 30px;
+      background-color: rgba(0, 0, 0, 0.7);
+      border-radius: 10px;
+      margin-top: 50px;
+    }
+    h1 {
+      font-size: 2.5em;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .button {
+      display: block;
+      background-color: #444;
+      color: #fff;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    .button:hover {
+      background-color: #666;
+    }
+    .item {
+      color: #8fe;
+    }
+    .coin {
+      color: gold;
+    }
+    #title-screen {
+      text-align: center;
+    }
+    #title-screen img {
+      max-width: 100%;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="title-screen">
+      <img src="title.jpg" alt="Titelbild"> <!-- Ersetze mit deinem Bild -->
+      <h1>Die Schattenreise</h1>
+      <button class="button" onclick="startGame()">Spiel starten</button>
+      <button class="button" onclick="loadGame()">Spiel laden</button>
+    </div>
+    <div id="game" style="display:none;">
+      <div id="story"></div>
+      <div id="choices"></div>
+      <div id="status"></div>
+    </div>
+  </div>
+
+  <audio id="bg-music" loop>
+    <source src="mystic.mp3" type="audio/mpeg"> <!-- Deine Musikdatei -->
+  </audio>
+
+  <script>
+    let storyElement = document.getElementById("story");
+    let choicesElement = document.getElementById("choices");
+    let statusElement = document.getElementById("status");
+    let bgMusic = document.getElementById("bg-music");
+
+    let state = {
+      coins: 0,
+      items: [],
+      currentScene: "intro"
+    };
+
+    function updateStatus() {
+      statusElement.innerHTML = `Gold: <span class="coin">${state.coins}</span> | Items: ${state.items.map(i => `<span class="item">${i}</span>`).join(', ') || 'Keine'}`;
+    }
+
+    function saveGame() {
+      localStorage.setItem("textAdventureState", JSON.stringify(state));
+    }
+
+    function loadGame() {
+      let saved = localStorage.getItem("textAdventureState");
+      if (saved) {
+        state = JSON.parse(saved);
+        document.getElementById("title-screen").style.display = "none";
+        document.getElementById("game").style.display = "block";
+        bgMusic.play();
+        runScene(state.currentScene);
+      } else {
+        alert("Kein gespeicherter Spielstand gefunden.");
+      }
+    }
+
+    function startGame() {
+      document.getElementById("title-screen").style.display = "none";
+      document.getElementById("game").style.display = "block";
+      bgMusic.volume = 0.3;
+      bgMusic.play();
+      runScene("intro");
+    }
+
+    function runScene(sceneName) {
+      state.currentScene = sceneName;
+      saveGame();
+      updateStatus();
+
+      if (scenes[sceneName]) {
+        let scene = scenes[sceneName];
+        storyElement.innerHTML = `<p>${scene.text}</p>`;
+        choicesElement.innerHTML = '';
+        scene.choices.forEach(choice => {
+          let btn = document.createElement("button");
+          btn.className = "button";
+          btn.innerText = choice.text;
+          btn.onclick = () => {
+            if (choice.effect) choice.effect();
+            runScene(choice.next);
+          };
+          choicesElement.appendChild(btn);
+        });
+      } else {
+        storyElement.innerHTML = "<p>Ende.</p>";
+        choicesElement.innerHTML = '';
+      }
+    }
+
+    const scenes = {
+      intro: {
+        text: "Dichter Nebel liegt über dem Land, und der Ruf der alten Glocke hallt durch die dunklen Wälder. Du stehst an der Schwelle einer Reise, die dich durch Schatten, Feuer und Erinnerung führen wird.",
+        choices: [
+          { text: "Dem Nebel folgen", next: "cave" },
+          { text: "Zurück zum Dorf gehen", next: "village" }
+        ]
+      },
+      cave: {
+        text: "Ein grollendes Echo empfängt dich in der Höhle. Zwei Tunnel führen in die Tiefe. Einer duftet nach Schwefel, der andere nach kalter Erde.",
+        choices: [
+          {
+            text: "In den schwefligen Tunnel gehen",
+            next: "dragonFight",
+            effect: () => state.coins += 10
+          },
+          {
+            text: "Den dunklen Erdgang betreten",
+            next: "barbarFight",
+            effect: () => state.coins += 5
+          }
+        ]
+      },
+      dragonFight: {
+        text: "Ein Drache erhebt sich aus der Glut. Dein Herz bebt. Du besiegst ihn mit Mut – und findest ein Auge aus Gold.",
+        choices: [
+          {
+            text: "Das Drachenauge nehmen",
+            next: "afterFight",
+            effect: () => state.items.push("Drachenauge")
+          }
+        ]
+      },
+      barbarFight: {
+        text: "Ein wilder Barbar springt aus dem Dunkel. Nach einem harten Kampf fällt er – und lässt Rhabarberkuchen zurück.",
+        choices: [
+          {
+            text: "Den Kuchen essen",
+            next: "afterFight",
+            effect: () => state.items.push("Barbarenkuchen")
+          }
+        ]
+      },
+      afterFight: {
+        text: "Ein Krieger tritt aus dem Nebel. Ihr schließt euch zusammen. Gemeinsam erreicht ihr ein altes Schloss.",
+        choices: [
+          { text: "Das Schloss betreten", next: "castle" }
+        ]
+      },
+      castle: {
+        text: "Im Herzen des Schlosses erwartet euch ein Kämpfer – es ist der Bruder des Kindes, das einst im Dorf lebte…",
+        choices: [
+          {
+            text: "Mit ihm kämpfen",
+            next: "castleVictory",
+            effect: () => {
+              state.coins += 20;
+              state.items.push("Verfluchtes Schwert");
+            }
+          },
+          {
+            text: "Mit ihm reden",
+            next: "castlePeace"
+          }
+        ]
+      },
+      castleVictory: {
+        text: "Du besiegst ihn. Als er stirbt, flüstert er: 'Findet sie...'. Du nimmst Schwert und Schild.",
+        choices: [
+          { text: "Weiterziehen", next: "kobold" }
+        ]
+      },
+      castlePeace: {
+        text: "Ein Blick auf die alte Puppe in deiner Tasche rührt ihn. Tränen fließen. Er begleitet dich.",
+        choices: [
+          { text: "Gemeinsam weiterziehen", next: "kobold" }
+        ]
+      },
+      kobold: {
+        text: "Ein Kobold mit buntem Wagen lächelt schief. 'Willst du handeln?'", 
+        choices: [
+          {
+            text: "Heiltrank kaufen (10 Gold)",
+            next: "portal",
+            effect: () => {
+              if (state.coins >= 10) {
+                state.coins -= 10;
+                state.items.push("Heiltrank");
+              }
+            }
+          },
+          {
+            text: "Magische Feder kaufen (15 Gold)",
+            next: "portal",
+            effect: () => {
+              if (state.coins >= 15) {
+                state.coins -= 15;
+                state.items.push("Magische Feder");
+              }
+            }
+          },
+          {
+            text: "Einfach weitergehen",
+            next: "portal"
+          }
+        ]
+      },
+      portal: {
+        text: "Am Ende der Reise steht ein leuchtendes Portal. Eine andere Welt? Oder die wahre?",
+        choices: [
+          {
+            text: "Hindurchgehen",
+            next: "ending"
+          }
+        ]
+      },
+      ending: {
+        text: "Du trittst in das Licht – und erkennst dein Spiegelbild in einer anderen Zeit. Die Schattenreise war mehr als ein Traum. Sie war Erinnerung.",
+        choices: []
+      },
+      village: {
+        text: "Das Dorf ist verlassen. Nebel kroch einst durch seine Gassen. Erinnerungen an das Kind mit der Puppe erwachen.",
+        choices: [
+          { text: "Zurück in die Nacht", next: "intro" }
+        ]
+      }
+    };
+  </script>
+</body>
+</html>
